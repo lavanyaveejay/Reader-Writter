@@ -1,0 +1,182 @@
+#include<iostream>                                                                                                                                       
+#include<pthread.h> 
+#include<semaphore.h> 
+#include<semaphore.h> 
+#include <string.h>
+#include <thread>
+using namespace std;
+
+sem_t lRaccss;
+sem_t lWaccss;
+
+//Declare variable                                                                                                                                       
+int lRcnt=0;
+int lWcnt=0;
+string lBffr;
+int bffrCont = 1;
+
+//Define a method for reader
+bool validate()
+{
+    if((lRcnt > 1) || (lWcnt > 0))
+    {
+        cout << "Reader Count : "<< lRcnt <<endl;
+        cout << "Writer Count : "<< lWcnt<<endl;
+        cout << "** RULES FAILED ** \n";
+        if(lWcnt > 0)
+            cout << "\t Only 1 Writer Process can be in Critical Section\n";
+        if(lRcnt > 1)
+            cout << "\t Only 2 Reader Processes can be in Critical Section\n";
+        return false;
+    }
+    return true;
+}
+
+void * Reader(void *arg)                                                                                                                                   
+{
+
+    //Check if 2 Reader or 1 writer is alredy present
+     if(!validate())
+     {
+        sem_wait(&lRaccss); 
+     }
+     else
+     {
+        cout<<" ** Inside Reader Buffer ** \n";
+        //Increment Count                                                                                                                                  
+         lRcnt++;
+         
+         //Release Reader
+         sem_post(&lRaccss);
+    
+         //Read and Display message  
+         cout<<lBffr<<endl;   
+    
+         //Decrement value                                                                                                                                 
+         sem_wait(&lRaccss);
+         lRcnt--;   
+         cout<<" ** End of Reader Buffer ** \n";
+     }
+}                               
+
+void * Writer(void* arg)                                                                                                                                   
+
+{
+
+     //Declare variable                                                                                                                                                       
+
+     long lWNum1=(long)arg;
+     int lWNum=(int)lWNum1;
+     //Call method     
+     
+     //Check if 2 Reader or 1 writer is alredy present
+     if(!validate())
+     {
+        sem_wait(&lWaccss);
+     }
+    else
+    {
+        cout<<" ** Inside Writer Buffer ** \n";
+        //Increment Count                                                                                                                                  
+         lWcnt++;
+         
+         //Release writer
+         sem_post(&lWaccss); 
+         
+         //Display message
+         cout<<"writer number"<<lWNum<<endl;
+         cout<<"** BEFORE ** - "<<lBffr<<endl;
+    
+         //Write To Buffer
+         lBffr.append(" Data" + std::to_string(bffrCont) + " , "); 
+         bffrCont++;
+
+         //Display message 
+         cout<<"** AFTER ** - "<<lBffr<<endl;
+    
+         //Decrement value                                                                                                                                 
+         sem_wait(&lWaccss);
+         lWcnt--;   
+         cout<<" ** End of Writer Buffer ** \n";
+
+    }
+
+}                                                                                                                                                       
+
+int main()                                                                                                                                                 
+{ 
+
+     //Generate random number
+     //int x = rand()%2;
+     int x =0;
+
+     //Declare array   
+     pthread_t lReaders[3];
+     pthread_t lWrtrs[2];
+
+     //Display message                                                                                                                                   
+     lBffr = "Buffer DATA = ";
+
+     //Initialize                                                                                                                        
+     sem_init(&lRaccss,0,1);
+     sem_init(&lWaccss,0,1);                                                                                                                             
+
+     //Loop until length   
+
+
+
+    //Case : Normal Execution
+    cout <<"----------------------------------------------------------------------\n";
+    cout<< "Case : Normal Execution : \n";
+     for(int li=0; li<3;li++)                                                                                                                                     
+     {
+          pthread_create(&lReaders[li],NULL,Reader,(void *)&li); 
+          std::this_thread::sleep_for (std::chrono::seconds(1));
+     }
+
+     for(int li=0; li<2;li++)                                                                                                                                   
+     {
+          pthread_create(&lWrtrs[li],NULL,Writer,(int *)&li);    
+          std::this_thread::sleep_for (std::chrono::seconds(1));
+     }   
+    cout <<"----------------------------------------------------------------------\n";
+
+
+     
+     
+    //Case : 2 Readers adding a Writer
+    cout <<"----------------------------------------------------------------------\n";
+    cout<< "Case : 2 Readers adding a Writer : \n";
+    lRcnt=2; lWcnt=0;
+    pthread_create(&lWrtrs[0],NULL,Writer,(int *)&lWcnt);    
+    std::this_thread::sleep_for (std::chrono::seconds(1)); 
+    cout <<"----------------------------------------------------------------------\n";
+    
+    
+    
+    
+    //Case : 1 Writer adding a Writer
+    cout <<"----------------------------------------------------------------------\n";
+    cout<< "Case : 1 Writer adding a Writer : \n";
+    lRcnt=0; lWcnt=1;
+    pthread_create(&lWrtrs[0],NULL,Writer,(int *)&lWcnt);    
+    std::this_thread::sleep_for (std::chrono::seconds(1));  
+    cout <<"----------------------------------------------------------------------\n";
+     
+    
+     
+    //Case : 2 Reader adding a Reader
+    cout <<"----------------------------------------------------------------------\n";
+    cout<< "Case : 2 Reader adding a Reader : \n";
+    lRcnt=2; lWcnt=0;
+    pthread_create(&lReaders[0],NULL,Reader,(void *)&lRcnt); 
+    std::this_thread::sleep_for (std::chrono::seconds(1));  
+    cout <<"----------------------------------------------------------------------\n";
+     
+     
+     //Destroy
+     sem_destroy (&lRaccss);
+     sem_destroy (&lWaccss);
+     return 0;                                                                                                                                                 
+
+}
